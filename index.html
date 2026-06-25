@@ -859,6 +859,7 @@
   // ── SPLASH & COUNTDOWN ───────────────────────────────────
   function goTop() {
     stopReading();
+    activeGeneration++;
     const splash = document.getElementById('splash');
     splash.style.display = 'flex';
     splash.style.opacity = '1';
@@ -868,6 +869,7 @@
 
   function splashEdit() {
     stopReading();
+    activeGeneration++;
     document.getElementById('splash').classList.add('hidden');
     setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 400);
     switchTab('edit');
