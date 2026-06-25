@@ -1068,6 +1068,12 @@
     return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
   }
 
+  function setSheetStatus(el, msg, isError) {
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'sheet-status' + (isError ? ' error' : '');
+  }
+
   async function loadFromSheet(manual = false) {
     const urlInput = document.getElementById('sheetUrl');
     const status   = document.getElementById('sheetStatus');
@@ -1080,15 +1086,32 @@
 
     const csvUrl = sheetUrlToCsv(url);
     if (!csvUrl) {
-      if (status) { status.textContent = '⚠️ URLの形式が正しくありません'; status.className = 'sheet-status error'; }
+      setSheetStatus(status, '⚠️ GoogleスプレッドシートのURLではありません。URLをコピーし直してください。', true);
       return;
     }
 
-    if (status) { status.textContent = '読み込み中…'; status.className = 'sheet-status'; }
+    setSheetStatus(status, '読み込み中…', false);
+
+    // CORSエラー回避のためプロキシ経由でフェッチ
+    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`;
 
     try {
-      const res = await fetch(csvUrl);
-      if (!res.ok) throw new Error('fetch failed');
+      const res = await fetch(proxyUrl);
+      if (res.status === 403 || res.status === 401) {
+        setSheetStatus(status, '⚠️ アクセス拒否（非公開）。スプシの共有設定を「リンクを知っている全員が閲覧可能」にしてください。', true);
+        if (manual) toast('⚠️ スプシが非公開です');
+        return;
+      }
+      if (res.status === 404) {
+        setSheetStatus(status, '⚠️ スプレッドシートが見つかりません。URLが正しいか確認してください。', true);
+        if (manual) toast('⚠️ スプシが見つかりません');
+        return;
+      }
+      if (!res.ok) {
+        setSheetStatus(status, `⚠️ 読み込みエラー（HTTP ${res.status}）。しばらく待ってから再試行してください。`, true);
+        if (manual) toast(`⚠️ 読み込みエラー（${res.status}）`);
+        return;
+      }
       const text = await res.text();
       const rows = text.trim().split('\n').slice(1); // 1行目スキップ
       const loaded = rows
@@ -1099,17 +1122,25 @@
         })
         .filter(c => c.yomi);
 
-      if (loaded.length === 0) throw new Error('データが見つかりませんでした');
+      if (loaded.length === 0) {
+        setSheetStatus(status, '⚠️ A列に読み札データが見つかりません。スプシのフォーマット（A列：読み札、B列：正解）を確認してください。', true);
+        if (manual) toast('⚠️ データが見つかりませんでした');
+        return;
+      }
 
       cards = loaded;
       localStorage.setItem('ui-karuta-cards', JSON.stringify(cards));
       renderCardList();
-      if (status) { status.textContent = `✅ ${loaded.length} 枚読み込みました`; status.className = 'sheet-status'; }
+      setSheetStatus(status, `✅ ${loaded.length} 枚読み込みました`, false);
       if (manual) toast(`📊 スプシから ${loaded.length} 枚読み込みました`);
     } catch(e) {
-      const msg = '⚠️ 読み込み失敗。スプシが「全員が閲覧可能」で公開されているか確認してください。';
-      if (status) { status.textContent = msg; status.className = 'sheet-status error'; }
-      if (manual) toast(msg);
+      if (!navigator.onLine) {
+        setSheetStatus(status, '⚠️ オフラインです。ネットワーク接続を確認してください。', true);
+        if (manual) toast('⚠️ オフラインです');
+      } else {
+        setSheetStatus(status, '⚠️ 読み込みに失敗しました。スプシが「全員が閲覧可能」で公開されているか確認してください。', true);
+        if (manual) toast('⚠️ 読み込みに失敗しました');
+      }
     }
   }
 
