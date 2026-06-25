@@ -775,6 +775,7 @@
   let isReading = false;
   let isPaused = false;
   let currentUtterances = [];
+  let activeGeneration = 0;
 
   // ── STORAGE ────────────────────────────────────────────
   function loadCards() {
@@ -937,7 +938,9 @@
     document.getElementById('progressFill').style.width = `${(done / total) * 100}%`;
     document.getElementById('progressLabel').textContent = `${done} / ${total} 枚目`;
 
+    const gen = activeGeneration;
     countdown(() => {
+      if (gen !== activeGeneration) return; // 次の札が押されていたらスキップ
       document.getElementById('yomiText').classList.remove('placeholder');
       document.getElementById('yomiText').textContent = card.yomi;
       readAloud(card.yomi);
@@ -1057,6 +1060,8 @@
   }
 
   function nextCard() {
+    stopReading();
+    activeGeneration++;
     currentIdx++;
     const validCards = cards.filter(c => c.yomi.trim());
     if (currentIdx >= order.length) {
@@ -1075,13 +1080,12 @@
 
   function setPlayButtons(enabled, finished = false) {
     document.getElementById('btnReplay').disabled = !enabled;
-    document.getElementById('btnNext').disabled = !enabled;
-    // 答えボタンは読み上げ中でも常に押せる（ゲーム開始後）
+    // 次の札は読み上げ中でも押せる（ゲーム終了時のみ無効）
     const notStarted = order.length === 0;
+    document.getElementById('btnNext').disabled = finished || notStarted;
     document.getElementById('btnAnswer').disabled = finished || notStarted;
     if (finished) {
       document.getElementById('btnReplay').disabled = true;
-      document.getElementById('btnNext').disabled = true;
     }
   }
 
