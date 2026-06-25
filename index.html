@@ -1093,7 +1093,9 @@
     setSheetStatus(status, '読み込み中…', false);
 
     // CORSエラー回避のためプロキシ経由でフェッチ
-    const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(csvUrl)}`;
+    // corsproxy.io は生URLを渡す形式のため encodeURIComponent と相性が悪く 400 になる。
+    // allorigins.win は url= パラメータで受け取るため encodeURIComponent が正しく機能する。
+    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`;
 
     try {
       const res = await fetch(proxyUrl);
