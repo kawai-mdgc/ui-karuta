@@ -290,6 +290,13 @@
     }
     .btn-stop:not(:disabled):hover { background: rgba(248,113,113,0.22); }
 
+    .btn-play {
+      background: rgba(1,180,185,0.12);
+      border: 1px solid var(--accent);
+      color: var(--accent);
+    }
+    .btn-play:not(:disabled):hover { background: rgba(1,180,185,0.22); }
+
     .btn-back {
       padding: 6px 14px;
       background: none;
@@ -766,6 +773,7 @@
   let order = [];      // shuffled indices
   let currentIdx = 0;  // index into order[]
   let isReading = false;
+  let isPaused = false;
   let currentUtterances = [];
 
   // ── STORAGE ────────────────────────────────────────────
@@ -936,14 +944,26 @@
     });
   }
 
+  function setStopBtnState(state) {
+    const btn = document.getElementById('btnStop');
+    if (!btn) return;
+    if (state === 'stop') {
+      btn.textContent = '⏹ 停止'; btn.className = 'btn btn-stop'; btn.disabled = false;
+    } else if (state === 'play') {
+      btn.textContent = '▶ 再生'; btn.className = 'btn btn-play'; btn.disabled = false;
+    } else {
+      btn.textContent = '⏹ 停止'; btn.className = 'btn btn-stop'; btn.disabled = true;
+    }
+  }
+
   // Repeat 3 times with gaps
   function readAloud(text, onDone) {
     stopReading();
     isReading = true;
+    isPaused = false;
     document.getElementById('yomiCard').classList.add('reading');
     document.getElementById('readingIndicator').classList.add('visible');
-    const btnStop = document.getElementById('btnStop');
-    if (btnStop) btnStop.disabled = false;
+    setStopBtnState('stop');
 
     const synth = window.speechSynthesis;
     let count = 0;
@@ -974,10 +994,10 @@
 
   function finishReading() {
     isReading = false;
+    isPaused = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
-    const btnStop = document.getElementById('btnStop');
-    if (btnStop) btnStop.disabled = true;
+    setStopBtnState('disabled');
     setPlayButtons(true);
   }
 
@@ -985,15 +1005,26 @@
     window.speechSynthesis.cancel();
     currentUtterances = [];
     isReading = false;
+    isPaused = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
-    const btnStop = document.getElementById('btnStop');
-    if (btnStop) btnStop.disabled = true;
+    setStopBtnState('disabled');
   }
 
   function handleStop() {
-    stopReading();
-    setPlayButtons(true);
+    if (isPaused) {
+      window.speechSynthesis.resume();
+      isPaused = false;
+      document.getElementById('yomiCard').classList.add('reading');
+      document.getElementById('readingIndicator').classList.add('visible');
+      setStopBtnState('stop');
+    } else {
+      window.speechSynthesis.pause();
+      isPaused = true;
+      document.getElementById('yomiCard').classList.remove('reading');
+      document.getElementById('readingIndicator').classList.remove('visible');
+      setStopBtnState('play');
+    }
   }
 
   function replay() {
