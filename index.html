@@ -1,0 +1,1146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>UIかるた 読み上げくん</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700&family=Noto+Sans+JP:wght@400;500;700&display=swap');
+
+    :root {
+      --bg: #FFFFFF;
+      --surface: #f4f6fb;
+      --surface2: #eaecf5;
+      --border: #d0d8ee;
+      --accent: #01B4B9;
+      --accent2: #01d4da;
+      --pink: #DD7CCD;
+      --text: #1e2a5a;
+      --text-muted: #6b7aaa;
+      --green: #01B4B9;
+      --red: #f87171;
+      --card-shadow: 0 8px 40px rgba(60,79,137,0.10);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    header {
+      width: 100%;
+      padding: 20px 24px 16px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid var(--border);
+      background: #FFFFFF;
+    }
+
+    .logo {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.2rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      color: var(--accent);
+    }
+    .logo span { color: var(--pink); }
+
+    .deck-info {
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+    }
+
+    .btn-start-header {
+      padding: 8px 18px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      color: #fff;
+      border: none;
+      border-radius: 99px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: filter 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn-start-header:hover { filter: brightness(1.1); transform: translateY(-1px); }
+
+    .btn-edit-header {
+      padding: 8px 18px;
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+      border-radius: 99px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+      white-space: nowrap;
+    }
+    .btn-edit-header:hover { background: rgba(1,180,185,0.08); transform: translateY(-1px); }
+
+    /* ─── MAIN ─── */
+    main {
+      width: 100%;
+      max-width: 680px;
+      padding: 32px 20px 40px;
+      display: flex;
+      flex-direction: column;
+      gap: 24px;
+    }
+
+    /* ─── PROGRESS ─── */
+    .progress-bar-wrap {
+      background: var(--surface2);
+      border-radius: 99px;
+      height: 6px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--pink));
+      border-radius: 99px;
+      transition: width 0.4s ease;
+    }
+    .progress-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+      text-align: right;
+      margin-top: 4px;
+    }
+
+    /* ─── CARD ─── */
+    .yomi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 36px 32px;
+      box-shadow: var(--card-shadow);
+      min-height: 180px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      position: relative;
+      transition: box-shadow 0.3s;
+    }
+    .yomi-card.reading {
+      box-shadow: 0 0 0 2px var(--accent), var(--card-shadow);
+    }
+
+    .yomi-badge {
+      font-size: 0.65rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      color: var(--accent);
+      background: rgba(1,180,185,0.15);
+      border: 1px solid rgba(1,180,185,0.4);
+      border-radius: 99px;
+      padding: 3px 12px;
+    }
+
+    .yomi-text {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 1.25rem;
+      line-height: 2;
+      text-align: center;
+      color: var(--text);
+      letter-spacing: 0.02em;
+    }
+    .yomi-text.placeholder {
+      color: var(--text-muted);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.95rem;
+    }
+
+    .reading-indicator {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 0.8rem;
+      color: var(--accent);
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .reading-indicator.visible { opacity: 1; }
+    .dots {
+      display: flex; gap: 4px;
+    }
+    .dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    .dot:nth-child(2) { animation-delay: 0.2s; }
+    .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1.1); }
+    }
+
+    /* ─── ANSWER PANEL ─── */
+    .answer-panel {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 20px 24px;
+      display: none;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .answer-panel.visible { display: flex; }
+
+    .answer-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      letter-spacing: 0.12em;
+      color: var(--pink);
+      text-transform: uppercase;
+    }
+    .answer-names {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+    .answer-tag {
+      background: rgba(221,124,205,0.15);
+      border: 1px solid rgba(221,124,205,0.45);
+      color: var(--pink);
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      letter-spacing: 0.03em;
+    }
+
+    /* ─── CONTROLS ─── */
+    .controls {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+    }
+
+    .btn {
+      flex: 1;
+      min-width: 120px;
+      padding: 14px 20px;
+      border: none;
+      border-radius: 12px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+    }
+    .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+
+    .btn-primary {
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      color: #fff;
+    }
+    .btn-primary:not(:disabled):hover { filter: brightness(1.12); transform: translateY(-1px); }
+
+    .btn-secondary {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+    }
+    .btn-secondary:not(:disabled):hover { background: var(--border); }
+
+    .btn-answer {
+      background: rgba(221,124,205,0.12);
+      border: 1px solid rgba(221,124,205,0.45);
+      color: var(--pink);
+    }
+    .btn-answer:not(:disabled):hover { background: rgba(221,124,205,0.22); }
+
+    .btn-next {
+      background: rgba(1,180,185,0.12);
+      border: 1px solid var(--accent);
+      color: var(--accent2);
+    }
+    .btn-next:not(:disabled):hover { background: rgba(1,180,185,0.22); }
+
+    .btn-back {
+      padding: 6px 14px;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 99px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+    }
+    .btn-back:hover { color: var(--text); border-color: var(--text-muted); }
+
+    /* ─── EDITOR ─── */
+    .editor-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+    .editor-header {
+      padding: 16px 24px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .editor-title {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.06em;
+      text-transform: uppercase;
+    }
+    .editor-count {
+      font-size: 0.8rem;
+      color: var(--accent);
+    }
+
+    .card-list {
+      max-height: 420px;
+      overflow-y: auto;
+      padding: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .card-list::-webkit-scrollbar { width: 6px; }
+    .card-list::-webkit-scrollbar-track { background: transparent; }
+    .card-list::-webkit-scrollbar-thumb { background: var(--border); border-radius: 99px; }
+
+    .card-item {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 12px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .card-item-row {
+      display: flex;
+      gap: 8px;
+      align-items: flex-start;
+    }
+    .card-num {
+      font-size: 0.7rem;
+      color: var(--accent);
+      font-weight: 700;
+      min-width: 24px;
+      padding-top: 8px;
+    }
+    .card-fields {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+    .card-input {
+      width: 100%;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.88rem;
+      padding: 8px 10px;
+      resize: vertical;
+      transition: border-color 0.15s;
+    }
+    .card-input::placeholder { color: var(--text-muted); }
+    .card-input:focus { outline: none; border-color: var(--accent); }
+
+    .card-input-answer {
+      width: 100%;
+      background: #FFFFFF;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--pink);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      padding: 8px 10px;
+      transition: border-color 0.15s;
+    }
+    .card-input-answer::placeholder { color: var(--text-muted); }
+    .card-input-answer:focus { outline: none; border-color: var(--pink); }
+
+    .field-label {
+      font-size: 0.65rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+
+    .btn-delete {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+      padding: 4px;
+      border-radius: 6px;
+      transition: color 0.15s;
+      align-self: flex-start;
+    }
+    .btn-delete:hover { color: var(--red); }
+
+    .editor-footer {
+      padding: 14px 24px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      gap: 10px;
+    }
+
+    /* ─── TOAST ─── */
+    .toast {
+      position: fixed;
+      bottom: 24px;
+      left: 50%;
+      transform: translateX(-50%) translateY(60px);
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 10px 20px;
+      font-size: 0.85rem;
+      color: var(--text);
+      opacity: 0;
+      transition: all 0.3s ease;
+      z-index: 100;
+    }
+    .toast.show { transform: translateX(-50%) translateY(0); opacity: 1; }
+
+    /* ─── TABS ─── */
+    .tabs {
+      display: flex;
+      gap: 4px;
+      background: var(--surface2);
+      border-radius: 12px;
+      padding: 4px;
+    }
+    .tab {
+      flex: 1;
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      color: var(--text-muted);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.85rem;
+      font-weight: 700;
+      border-radius: 9px;
+      cursor: pointer;
+      transition: all 0.2s;
+      letter-spacing: 0.04em;
+    }
+    .tab.active {
+      background: #FFFFFF;
+      color: var(--accent);
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .pane { display: none; }
+    .pane.active { display: flex; flex-direction: column; gap: 24px; }
+
+    /* ─── EMPTY STATE ─── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+      color: var(--text-muted);
+      font-size: 0.9rem;
+      line-height: 1.8;
+    }
+
+    /* ─── SHEET SECTION ─── */
+    .sheet-section {
+      border-top: 1px solid var(--border);
+      padding: 20px 24px 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .sheet-label {
+      font-size: 0.85rem;
+      font-weight: 700;
+      color: var(--text);
+    }
+    .sheet-desc {
+      font-size: 0.78rem;
+      color: var(--text-muted);
+      line-height: 1.7;
+    }
+    .sheet-input-row {
+      display: flex;
+      gap: 8px;
+    }
+    .sheet-input {
+      flex: 1;
+      background: #fff;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      color: var(--text);
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.8rem;
+      padding: 8px 12px;
+      transition: border-color 0.15s;
+      min-width: 0;
+    }
+    .sheet-input:focus { outline: none; border-color: var(--accent); }
+    .sheet-input::placeholder { color: var(--text-muted); }
+    .btn-sheet-load {
+      padding: 8px 16px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.8rem;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: filter 0.2s;
+    }
+    .btn-sheet-load:hover { filter: brightness(1.08); }
+    .sheet-status {
+      font-size: 0.78rem;
+      min-height: 1em;
+      color: var(--accent);
+    }
+    .sheet-status.error { color: var(--red); }
+    .sheet-format {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .sheet-format-label {
+      font-size: 0.7rem;
+      font-weight: 700;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      margin-bottom: 2px;
+    }
+    .sheet-format-item {
+      font-size: 0.78rem;
+      color: var(--text);
+    }
+    .sheet-format-note {
+      font-size: 0.72rem;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    @media (max-width: 480px) {
+      .yomi-text { font-size: 1.05rem; }
+      .yomi-card { padding: 24px 20px; }
+      .controls { flex-direction: column; }
+    }
+
+    /* ─── SPLASH ─── */
+    #splash {
+      position: fixed;
+      inset: 0;
+      background: #FFFFFF;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      z-index: 200;
+      transition: opacity 0.4s ease;
+    }
+    #splash.hidden { opacity: 0; pointer-events: none; }
+
+    .splash-logo {
+      font-family: 'Noto Serif JP', serif;
+      font-size: 2.2rem;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      color: var(--accent);
+    }
+    .splash-logo span { color: var(--pink); }
+
+    .splash-sub {
+      font-size: 0.9rem;
+      color: var(--text-muted);
+      letter-spacing: 0.08em;
+    }
+
+    .btn-splash-start {
+      padding: 16px 48px;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      color: #fff;
+      border: none;
+      border-radius: 99px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 1.1rem;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.06em;
+      box-shadow: 0 6px 24px rgba(1,180,185,0.25);
+      transition: filter 0.2s, transform 0.15s, box-shadow 0.2s;
+    }
+    .btn-splash-edit {
+      padding: 10px 32px;
+      background: transparent;
+      color: var(--accent);
+      border: 1.5px solid var(--accent);
+      border-radius: 99px;
+      font-family: 'Noto Sans JP', sans-serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.15s;
+    }
+    .btn-splash-edit:hover { background: rgba(1,180,185,0.08); transform: translateY(-1px); }
+
+    .btn-splash-start:hover {
+      filter: brightness(1.08);
+      transform: translateY(-2px);
+      box-shadow: 0 10px 32px rgba(1,180,185,0.32);
+    }
+
+    /* ─── COUNTDOWN OVERLAY ─── */
+    #countdown {
+      position: fixed;
+      inset: 0;
+      background: rgba(255,255,255,0.92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 150;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s;
+    }
+    #countdown.visible { opacity: 1; pointer-events: all; }
+
+    .countdown-num {
+      font-family: 'Noto Serif JP', serif;
+      font-size: clamp(3rem, 12vw, 8rem);
+      font-weight: 700;
+      background: linear-gradient(135deg, var(--accent), var(--pink));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      animation: countPop 0.5s ease;
+    }
+    @keyframes countPop {
+      0%   { transform: scale(1.4); opacity: 0; }
+      60%  { transform: scale(0.95); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- SPLASH -->
+<div id="splash">
+  <div class="splash-logo">UI<span>かるた</span>読み上げますし🍣</div>
+  <button class="btn-splash-start" onclick="splashStart()">UIかるたをはじめる</button>
+  <button class="btn-splash-edit" onclick="splashEdit()">✎ 札を編集する</button>
+</div>
+
+<!-- COUNTDOWN -->
+<div id="countdown">
+  <div class="countdown-num" id="countdownNum">3</div>
+</div>
+
+<header>
+  <div class="logo" onclick="goTop()" style="cursor:pointer;">UI<span>かるた</span>読み上げますし🍣</div>
+  <div class="header-right"></div>
+</header>
+
+<main>
+  <div class="tabs" style="display:none">
+    <button class="tab active" onclick="switchTab('play')">▶ 読み上げ</button>
+    <button class="tab" onclick="switchTab('edit')">✎ 札を編集</button>
+  </div>
+
+  <!-- PLAY PANE -->
+  <div class="pane active" id="pane-play">
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill" id="progressFill" style="width:0%"></div>
+    </div>
+    <div class="progress-label" id="progressLabel">— / —</div>
+
+    <div class="yomi-card" id="yomiCard">
+      <div class="yomi-badge">読み札</div>
+      <div class="yomi-text placeholder" id="yomiText">「札を編集」タブで読み札を登録してから、「最初から」を押してください。</div>
+      <div class="reading-indicator" id="readingIndicator">
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        読み上げ中
+      </div>
+    </div>
+
+    <div class="answer-panel" id="answerPanel">
+      <div class="answer-label">正解の絵札</div>
+      <div class="answer-names" id="answerNames"></div>
+    </div>
+
+    <div class="controls">
+      <button class="btn btn-secondary" id="btnReplay" onclick="replay()" disabled>↩ リプレイ</button>
+      <button class="btn btn-answer" id="btnAnswer" onclick="showAnswer()" disabled>💡 答え</button>
+      <button class="btn btn-next" id="btnNext" onclick="nextCard()" disabled>次の札 →</button>
+    </div>
+  </div>
+
+  <!-- EDIT PANE -->
+  <div class="pane" id="pane-edit">
+    <div class="editor-section">
+      <div class="editor-header">
+        <div class="editor-title">札の一覧　<span class="editor-count" id="editorCount">0 枚</span></div>
+        <button class="btn-back" onclick="goTop()">← TOPに戻る</button>
+      </div>
+      <div class="card-list" id="cardList">
+        <div class="empty-state">まだ札がありません。<br>下の「＋ 札を追加」から登録してください。</div>
+      </div>
+      <div class="editor-footer">
+        <button class="btn btn-primary" style="flex:1" onclick="addCard()">＋ 札を追加</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="saveCards()">💾 保存</button>
+      </div>
+      <div class="sheet-section">
+        <div class="sheet-label">📊 Googleスプレッドシート連携</div>
+        <div class="sheet-desc">スプシを「全員が閲覧可能」で公開し、下にURLを貼ってください。<br>起動時に自動で読み込まれます。</div>
+        <div class="sheet-input-row">
+          <input type="text" id="sheetUrl" class="sheet-input" placeholder="https://docs.google.com/spreadsheets/d/..." />
+          <button class="btn-sheet-load" onclick="loadFromSheet(true)">↓ 今すぐ読み込む</button>
+        </div>
+        <div class="sheet-status" id="sheetStatus"></div>
+        <div class="sheet-format">
+          <span class="sheet-format-label">スプシの列フォーマット</span>
+          <span class="sheet-format-item">A列：読み札（読み上げ文）</span>
+          <span class="sheet-format-item">B列：正解（コンマ区切りで複数可）</span>
+          <span class="sheet-format-note">※ 1行目はヘッダー行として無視されます</span>
+        </div>
+      </div>
+    </div>
+    <div style="font-size:0.75rem;color:var(--text-muted);text-align:center;">
+      データはブラウザに自動保存されます。JSONエクスポートでバックアップできます。
+    </div>
+  </div>
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+  // ── STATE ──────────────────────────────────────────────
+  let cards = [];      // [{yomi: "", answers: ""}, ...]
+  let order = [];      // shuffled indices
+  let currentIdx = 0;  // index into order[]
+  let isReading = false;
+  let currentUtterances = [];
+
+  // ── STORAGE ────────────────────────────────────────────
+  function loadCards() {
+    try {
+      const saved = localStorage.getItem('ui-karuta-cards');
+      if (saved) cards = JSON.parse(saved);
+    } catch(e) {}
+    renderCardList();
+    updateDeckInfo();
+  }
+
+  function saveCards() {
+    localStorage.setItem('ui-karuta-cards', JSON.stringify(cards));
+    updateDeckInfo();
+    toast('💾 保存しました');
+  }
+
+  // ── TAB ────────────────────────────────────────────────
+  function switchTab(name) {
+    document.querySelectorAll('.tab').forEach((t, i) => {
+      t.classList.toggle('active', ['play','edit'][i] === name);
+    });
+    document.querySelectorAll('.pane').forEach(p => p.classList.remove('active'));
+    document.getElementById('pane-' + name).classList.add('active');
+    if (name === 'edit') renderCardList();
+  }
+
+  // ── EDITOR ─────────────────────────────────────────────
+  function renderCardList() {
+    const list = document.getElementById('cardList');
+    if (cards.length === 0) {
+      list.innerHTML = '<div class="empty-state">まだ札がありません。<br>下の「＋ 札を追加」から登録してください。</div>';
+      document.getElementById('editorCount').textContent = '0 枚';
+      return;
+    }
+    list.innerHTML = cards.map((c, i) => `
+      <div class="card-item">
+        <div class="card-item-row">
+          <div class="card-num">${i + 1}</div>
+          <div class="card-fields">
+            <div class="field-label">読み札（読み上げ文）</div>
+            <textarea class="card-input" rows="2" placeholder="例：タップすると選択肢が展開して…"
+              onchange="cards[${i}].yomi = this.value">${escHtml(c.yomi)}</textarea>
+            <div class="field-label">正解（コンマ区切りで複数可）</div>
+            <input type="text" class="card-input-answer" placeholder="例：Selector, Dropdown menu"
+              value="${escHtml(c.answers)}"
+              onchange="cards[${i}].answers = this.value">
+          </div>
+          <button class="btn-delete" onclick="deleteCard(${i})" title="削除">✕</button>
+        </div>
+      </div>
+    `).join('');
+    document.getElementById('editorCount').textContent = `${cards.length} 枚`;
+  }
+
+  function addCard() {
+    cards.push({ yomi: '', answers: '' });
+    renderCardList();
+    // scroll to bottom
+    const list = document.getElementById('cardList');
+    list.scrollTop = list.scrollHeight;
+  }
+
+  function deleteCard(i) {
+    cards.splice(i, 1);
+    renderCardList();
+  }
+
+  function exportJSON() {
+    const blob = new Blob([JSON.stringify(cards, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'ui-karuta.json';
+    a.click();
+    toast('⬇ JSONをダウンロードしました');
+  }
+
+  function updateDeckInfo() {
+  }
+
+  // ── SPLASH & COUNTDOWN ───────────────────────────────────
+  function goTop() {
+    stopReading();
+    const splash = document.getElementById('splash');
+    splash.style.display = 'flex';
+    splash.style.opacity = '1';
+    splash.classList.remove('hidden');
+    switchTab('play');
+  }
+
+  function splashEdit() {
+    stopReading();
+    document.getElementById('splash').classList.add('hidden');
+    setTimeout(() => { document.getElementById('splash').style.display = 'none'; }, 400);
+    switchTab('edit');
+  }
+
+  function splashStart() {
+    document.getElementById('splash').classList.add('hidden');
+    setTimeout(() => {
+      document.getElementById('splash').style.display = 'none';
+    }, 400);
+    startGame();
+  }
+
+  function countdown(onDone) {
+    const overlay = document.getElementById('countdown');
+    const numEl   = document.getElementById('countdownNum');
+    overlay.classList.add('visible');
+    const steps = ['3', '2', '1', 'START!!'];
+    let i = 0;
+    function tick() {
+      numEl.style.animation = 'none';
+      void numEl.offsetWidth; // reflow
+      numEl.style.animation = '';
+      numEl.textContent = steps[i];
+      if (i === steps.length - 1) {
+        setTimeout(() => {
+          overlay.classList.remove('visible');
+          onDone();
+        }, 700);
+        return;
+      }
+      i++;
+      setTimeout(tick, 900);
+    }
+    tick();
+  }
+
+  // ── GAME ───────────────────────────────────────────────
+  function startGame() {
+    const validCards = cards.filter(c => c.yomi.trim());
+    if (validCards.length === 0) {
+      toast('先に「札を編集」タブで読み札を登録してください');
+      return;
+    }
+    // Shuffle
+    order = shuffle(validCards.map((_, i) => i));
+    currentIdx = 0;
+    hideAnswer();
+    setPlayButtons(false);
+    showCard(order[currentIdx], validCards);
+  }
+
+  function showCard(idx, pool) {
+    const validCards = pool || cards.filter(c => c.yomi.trim());
+    const card = validCards[idx];
+    if (!card) return;
+
+    document.getElementById('yomiCard').classList.remove('reading');
+    // カウントダウン中は読み札を空にしておく
+    document.getElementById('yomiText').classList.add('placeholder');
+    document.getElementById('yomiText').textContent = '';
+    hideAnswer();
+    setPlayButtons(false);
+
+    // Update progress
+    const total = order.length;
+    const done = currentIdx + 1;
+    document.getElementById('progressFill').style.width = `${(done / total) * 100}%`;
+    document.getElementById('progressLabel').textContent = `${done} / ${total} 枚目`;
+
+    countdown(() => {
+      document.getElementById('yomiText').classList.remove('placeholder');
+      document.getElementById('yomiText').textContent = card.yomi;
+      readAloud(card.yomi);
+    });
+  }
+
+  // Repeat 3 times with gaps
+  function readAloud(text, onDone) {
+    stopReading();
+    isReading = true;
+    document.getElementById('yomiCard').classList.add('reading');
+    document.getElementById('readingIndicator').classList.add('visible');
+
+    const synth = window.speechSynthesis;
+    let count = 0;
+    const maxCount = 3;
+    const gapMs = 1800; // gap between repeats
+
+    function speakOnce() {
+      const utter = new SpeechSynthesisUtterance(text);
+      utter.lang = 'ja-JP';
+      utter.rate = 1.0;
+      utter.pitch = 1.0;
+
+      utter.onend = () => {
+        count++;
+        if (count < maxCount) {
+          setTimeout(speakOnce, gapMs);
+        } else {
+          finishReading();
+          if (onDone) onDone();
+        }
+      };
+      utter.onerror = () => { finishReading(); if (onDone) onDone(); };
+      synth.speak(utter);
+      currentUtterances.push(utter);
+    }
+    speakOnce();
+  }
+
+  function finishReading() {
+    isReading = false;
+    document.getElementById('yomiCard').classList.remove('reading');
+    document.getElementById('readingIndicator').classList.remove('visible');
+    setPlayButtons(true);
+  }
+
+  function stopReading() {
+    window.speechSynthesis.cancel();
+    currentUtterances = [];
+    isReading = false;
+    document.getElementById('yomiCard').classList.remove('reading');
+    document.getElementById('readingIndicator').classList.remove('visible');
+  }
+
+  function replay() {
+    const text = document.getElementById('yomiText').textContent;
+    if (!text || text === 'placeholder') return;
+    setPlayButtons(false);
+    readAloud(text, () => setPlayButtons(true));
+  }
+
+  function showAnswer() {
+    const validCards = cards.filter(c => c.yomi.trim());
+    const card = validCards[order[currentIdx]];
+    if (!card) return;
+
+    const panel = document.getElementById('answerPanel');
+    const namesEl = document.getElementById('answerNames');
+    const answers = card.answers.split(',').map(a => a.trim()).filter(Boolean);
+    namesEl.innerHTML = answers.length
+      ? answers.map(a => `<span class="answer-tag">${escHtml(a)}</span>`).join('')
+      : '<span style="color:var(--text-muted);font-size:0.85rem">（正解未登録）</span>';
+    panel.classList.add('visible');
+    // 答えを見たら次の札に進めるようにする
+    document.getElementById('btnNext').disabled = false;
+    // リプレイは答えを見たら押せなくする
+    document.getElementById('btnReplay').disabled = true;
+  }
+
+  function hideAnswer() {
+    document.getElementById('answerPanel').classList.remove('visible');
+  }
+
+  function nextCard() {
+    currentIdx++;
+    const validCards = cards.filter(c => c.yomi.trim());
+    if (currentIdx >= order.length) {
+      document.getElementById('yomiText').textContent = '🎉 全札おわり！お疲れさまでした';
+      document.getElementById('yomiText').classList.add('placeholder');
+      hideAnswer();
+      setPlayButtons(false, true);
+      document.getElementById('progressFill').style.width = '100%';
+      document.getElementById('progressLabel').textContent = `${order.length} / ${order.length} 枚`;
+      stopReading();
+      return;
+    }
+    hideAnswer();
+    showCard(order[currentIdx], validCards);
+  }
+
+  function setPlayButtons(enabled, finished = false) {
+    document.getElementById('btnReplay').disabled = !enabled;
+    document.getElementById('btnNext').disabled = !enabled;
+    // 答えボタンは読み上げ中でも常に押せる（ゲーム開始後）
+    const notStarted = order.length === 0;
+    document.getElementById('btnAnswer').disabled = finished || notStarted;
+    if (finished) {
+      document.getElementById('btnReplay').disabled = true;
+      document.getElementById('btnNext').disabled = true;
+    }
+  }
+
+  // ── UTILS ──────────────────────────────────────────────
+  function shuffle(arr) {
+    const a = [...arr];
+    for (let i = a.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [a[i], a[j]] = [a[j], a[i]];
+    }
+    return a;
+  }
+
+  function escHtml(str) {
+    return (str || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  }
+
+  function toast(msg) {
+    const el = document.getElementById('toast');
+    el.textContent = msg;
+    el.classList.add('show');
+    setTimeout(() => el.classList.remove('show'), 2500);
+  }
+
+  // ── SPREADSHEET ────────────────────────────────────────
+  function sheetUrlToCsv(url) {
+    // 通常のスプシURLをCSVエクスポートURLに変換
+    const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+    if (!m) return null;
+    const id = m[1];
+    // gid（シートID）があれば取得
+    const gidM = url.match(/[#&?]gid=(\d+)/);
+    const gid = gidM ? gidM[1] : '0';
+    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+  }
+
+  async function loadFromSheet(manual = false) {
+    const urlInput = document.getElementById('sheetUrl');
+    const status   = document.getElementById('sheetStatus');
+    const url = (urlInput ? urlInput.value.trim() : '') || localStorage.getItem('ui-karuta-sheet-url') || '';
+    if (!url) return;
+
+    // URLを保存
+    localStorage.setItem('ui-karuta-sheet-url', url);
+    if (urlInput) urlInput.value = url;
+
+    const csvUrl = sheetUrlToCsv(url);
+    if (!csvUrl) {
+      if (status) { status.textContent = '⚠️ URLの形式が正しくありません'; status.className = 'sheet-status error'; }
+      return;
+    }
+
+    if (status) { status.textContent = '読み込み中…'; status.className = 'sheet-status'; }
+
+    try {
+      const res = await fetch(csvUrl);
+      if (!res.ok) throw new Error('fetch failed');
+      const text = await res.text();
+      const rows = text.trim().split('\n').slice(1); // 1行目スキップ
+      const loaded = rows
+        .map(row => {
+          // CSV列をパース（カンマ・ダブルクォート対応）
+          const cols = parseCSVRow(row);
+          return { yomi: (cols[0] || '').trim(), answers: (cols[1] || '').trim() };
+        })
+        .filter(c => c.yomi);
+
+      if (loaded.length === 0) throw new Error('データが見つかりませんでした');
+
+      cards = loaded;
+      localStorage.setItem('ui-karuta-cards', JSON.stringify(cards));
+      renderCardList();
+      if (status) { status.textContent = `✅ ${loaded.length} 枚読み込みました`; status.className = 'sheet-status'; }
+      if (manual) toast(`📊 スプシから ${loaded.length} 枚読み込みました`);
+    } catch(e) {
+      const msg = '⚠️ 読み込み失敗。スプシが「全員が閲覧可能」で公開されているか確認してください。';
+      if (status) { status.textContent = msg; status.className = 'sheet-status error'; }
+      if (manual) toast(msg);
+    }
+  }
+
+  function parseCSVRow(row) {
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < row.length; i++) {
+      const c = row[i];
+      if (c === '"') {
+        if (inQ && row[i+1] === '"') { cur += '"'; i++; }
+        else { inQ = !inQ; }
+      } else if (c === ',' && !inQ) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += c;
+      }
+    }
+    cols.push(cur);
+    return cols;
+  }
+
+  // ── INIT ───────────────────────────────────────────────
+  // 保存済みのスプシURLを入力欄に復元
+  const savedSheetUrl = localStorage.getItem('ui-karuta-sheet-url');
+  if (savedSheetUrl) {
+    const el = document.getElementById('sheetUrl');
+    if (el) el.value = savedSheetUrl;
+  }
+  loadCards();
+  // 起動時にスプシがあれば自動読み込み
+  if (savedSheetUrl) loadFromSheet(false);
+</script>
+</body>
+</html>
