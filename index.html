@@ -283,6 +283,13 @@
     }
     .btn-next:not(:disabled):hover { background: rgba(1,180,185,0.22); }
 
+    .btn-stop {
+      background: rgba(248,113,113,0.12);
+      border: 1px solid rgba(248,113,113,0.45);
+      color: var(--red);
+    }
+    .btn-stop:not(:disabled):hover { background: rgba(248,113,113,0.22); }
+
     .btn-back {
       padding: 6px 14px;
       background: none;
@@ -708,7 +715,7 @@
     </div>
 
     <div class="controls">
-      <button class="btn btn-secondary" id="btnReplay" onclick="replay()" disabled>↩ リプレイ</button>
+      <button class="btn btn-secondary" id="btnReplay" onclick="togglePlayStop()" disabled>↩ リプレイ</button>
       <button class="btn btn-answer" id="btnAnswer" onclick="showAnswer()" disabled>💡 答え</button>
       <button class="btn btn-next" id="btnNext" onclick="nextCard()" disabled>次の札 →</button>
     </div>
@@ -928,12 +935,26 @@
     });
   }
 
+  function setReplayBtnState(isStop) {
+    const btn = document.getElementById('btnReplay');
+    if (!btn) return;
+    if (isStop) {
+      btn.textContent = '⏹ 停止';
+      btn.className = 'btn btn-stop';
+      btn.disabled = false;
+    } else {
+      btn.textContent = '↩ リプレイ';
+      btn.className = 'btn btn-secondary';
+    }
+  }
+
   // Repeat 3 times with gaps
   function readAloud(text, onDone) {
     stopReading();
     isReading = true;
     document.getElementById('yomiCard').classList.add('reading');
     document.getElementById('readingIndicator').classList.add('visible');
+    setReplayBtnState(true);
 
     const synth = window.speechSynthesis;
     let count = 0;
@@ -966,6 +987,7 @@
     isReading = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
+    setReplayBtnState(false);
     setPlayButtons(true);
   }
 
@@ -975,6 +997,16 @@
     isReading = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
+    setReplayBtnState(false);
+  }
+
+  function togglePlayStop() {
+    if (isReading) {
+      stopReading();
+      setPlayButtons(true);
+    } else {
+      replay();
+    }
   }
 
   function replay() {
