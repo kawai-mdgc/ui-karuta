@@ -1057,15 +1057,34 @@
   }
 
   // ── SPREADSHEET ────────────────────────────────────────
-  function sheetUrlToCsv(url) {
-    // 通常のスプシURLをCSVエクスポートURLに変換
+  const DEFAULT_SHEET_URL = 'https://docs.google.com/spreadsheets/d/14HZKK9aCwzfpR9IoV1QjQg7hWUaFkHJXpBHeON3LtKg/edit';
+
+  function sheetUrlToIds(url) {
     const m = url.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
     if (!m) return null;
     const id = m[1];
-    // gid（シートID）があれば取得
     const gidM = url.match(/[#&?]gid=(\d+)/);
     const gid = gidM ? gidM[1] : '0';
-    return `https://docs.google.com/spreadsheets/d/${id}/export?format=csv&gid=${gid}`;
+    return { id, gid };
+  }
+
+  // Google Visualization API の JSONP エンドポイントを使って取得する。
+  // fetch + CORSプロキシと違い、script タグ経由のためプロキシ不要。
+  function fetchGvizJson(sheetId, gid) {
+    return new Promise((resolve, reject) => {
+      const cbName = '_gvizCb' + Math.random().toString(36).slice(2);
+      const script = document.createElement('script');
+      const timer = setTimeout(() => { cleanup(); reject(new Error('timeout')); }, 10000);
+      function cleanup() {
+        clearTimeout(timer);
+        delete window[cbName];
+        if (script.parentNode) script.parentNode.removeChild(script);
+      }
+      window[cbName] = (res) => { cleanup(); resolve(res); };
+      script.onerror = () => { cleanup(); reject(new Error('load error')); };
+      script.src = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=responseHandler:${cbName}&gid=${gid}&headers=1`;
+      document.head.appendChild(script);
+    });
   }
 
   function setSheetStatus(el, msg, isError) {
@@ -1080,47 +1099,34 @@
     const url = (urlInput ? urlInput.value.trim() : '') || localStorage.getItem('ui-karuta-sheet-url') || '';
     if (!url) return;
 
-    // URLを保存
     localStorage.setItem('ui-karuta-sheet-url', url);
     if (urlInput) urlInput.value = url;
 
-    const csvUrl = sheetUrlToCsv(url);
-    if (!csvUrl) {
+    const ids = sheetUrlToIds(url);
+    if (!ids) {
       setSheetStatus(status, '⚠️ GoogleスプレッドシートのURLではありません。URLをコピーし直してください。', true);
       return;
     }
 
     setSheetStatus(status, '読み込み中…', false);
 
-    // CORSエラー回避のためプロキシ経由でフェッチ
-    // corsproxy.io は生URLを渡す形式のため encodeURIComponent と相性が悪く 400 になる。
-    // allorigins.win は url= パラメータで受け取るため encodeURIComponent が正しく機能する。
-    const proxyUrl = `https://api.allorigins.win/raw?url=${encodeURIComponent(csvUrl)}`;
-
     try {
-      const res = await fetch(proxyUrl);
-      if (res.status === 403 || res.status === 401) {
-        setSheetStatus(status, '⚠️ アクセス拒否（非公開）。スプシの共有設定を「リンクを知っている全員が閲覧可能」にしてください。', true);
-        if (manual) toast('⚠️ スプシが非公開です');
+      const data = await fetchGvizJson(ids.id, ids.gid);
+
+      if (!data || !data.table) {
+        setSheetStatus(status, '⚠️ アクセス拒否。スプシの共有設定を「リンクを知っている全員が閲覧可能」にしてください。', true);
+        if (manual) toast('⚠️ スプシにアクセスできません');
         return;
       }
-      if (res.status === 404) {
-        setSheetStatus(status, '⚠️ スプレッドシートが見つかりません。URLが正しいか確認してください。', true);
-        if (manual) toast('⚠️ スプシが見つかりません');
-        return;
-      }
-      if (!res.ok) {
-        setSheetStatus(status, `⚠️ 読み込みエラー（HTTP ${res.status}）。しばらく待ってから再試行してください。`, true);
-        if (manual) toast(`⚠️ 読み込みエラー（${res.status}）`);
-        return;
-      }
-      const text = await res.text();
-      const rows = text.trim().split('\n').slice(1); // 1行目スキップ
+
+      const rows = data.table.rows || [];
       const loaded = rows
         .map(row => {
-          // CSV列をパース（カンマ・ダブルクォート対応）
-          const cols = parseCSVRow(row);
-          return { yomi: (cols[0] || '').trim(), answers: (cols[1] || '').trim() };
+          const cols = row.c || [];
+          const yomi = cols[0] && cols[0].v != null ? String(cols[0].v).trim() : '';
+          // B列以降をすべてカンマ区切りで結合（複数列に分かれた回答にも対応）
+          const answers = cols.slice(1).map(c => c && c.v != null ? String(c.v).trim() : '').filter(Boolean).join(', ');
+          return { yomi, answers };
         })
         .filter(c => c.yomi);
 
@@ -1165,15 +1171,12 @@
   }
 
   // ── INIT ───────────────────────────────────────────────
-  // 保存済みのスプシURLを入力欄に復元
-  const savedSheetUrl = localStorage.getItem('ui-karuta-sheet-url');
-  if (savedSheetUrl) {
-    const el = document.getElementById('sheetUrl');
-    if (el) el.value = savedSheetUrl;
-  }
+  // 保存済みURLがあればそれを、なければデフォルトのスプシURLを入力欄にセット
+  const savedSheetUrl = localStorage.getItem('ui-karuta-sheet-url') || DEFAULT_SHEET_URL;
+  const sheetEl = document.getElementById('sheetUrl');
+  if (sheetEl) sheetEl.value = savedSheetUrl;
   loadCards();
-  // 起動時にスプシがあれば自動読み込み
-  if (savedSheetUrl) loadFromSheet(false);
+  loadFromSheet(false);
 </script>
 </body>
 </html>
