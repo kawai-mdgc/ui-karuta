@@ -976,8 +976,16 @@
     const maxCount = 3;
     const gapMs = 1800; // gap between repeats
 
+    function normalizeForSpeech(t) {
+      return t
+        .replace(/UI/g, 'ユーアイ')
+        .replace(/UX/g, 'ユーエックス')
+        .replace(/CTA/g, 'シーティーエー')
+        .replace(/IA/g, 'アイエー');
+    }
+
     function speakOnce() {
-      const utter = new SpeechSynthesisUtterance(text);
+      const utter = new SpeechSynthesisUtterance(normalizeForSpeech(text));
       utter.lang = 'ja-JP';
       utter.rate = 0.78;
       utter.pitch = 1.25;
