@@ -979,8 +979,15 @@
     function speakOnce() {
       const utter = new SpeechSynthesisUtterance(text);
       utter.lang = 'ja-JP';
-      utter.rate = 1.0;
-      utter.pitch = 1.0;
+      utter.rate = 0.78;
+      utter.pitch = 1.25;
+
+      // 特徴的な日本語音声を優先して選ぶ
+      const voices = window.speechSynthesis.getVoices();
+      const preferred = ['Kyoko', 'O-ren', 'Haruka', 'Ichiro'];
+      const picked = preferred.map(n => voices.find(v => v.name.includes(n))).find(Boolean)
+        || voices.find(v => v.lang === 'ja-JP');
+      if (picked) utter.voice = picked;
 
       utter.onend = () => {
         count++;
