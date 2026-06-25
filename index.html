@@ -715,7 +715,8 @@
     </div>
 
     <div class="controls">
-      <button class="btn btn-secondary" id="btnReplay" onclick="togglePlayStop()" disabled>↩ リプレイ</button>
+      <button class="btn btn-secondary" id="btnReplay" onclick="replay()" disabled>↩ リプレイ</button>
+      <button class="btn btn-stop" id="btnStop" onclick="handleStop()" disabled>⏹ 停止</button>
       <button class="btn btn-answer" id="btnAnswer" onclick="showAnswer()" disabled>💡 答え</button>
       <button class="btn btn-next" id="btnNext" onclick="nextCard()" disabled>次の札 →</button>
     </div>
@@ -935,26 +936,14 @@
     });
   }
 
-  function setReplayBtnState(isStop) {
-    const btn = document.getElementById('btnReplay');
-    if (!btn) return;
-    if (isStop) {
-      btn.textContent = '⏹ 停止';
-      btn.className = 'btn btn-stop';
-      btn.disabled = false;
-    } else {
-      btn.textContent = '↩ リプレイ';
-      btn.className = 'btn btn-secondary';
-    }
-  }
-
   // Repeat 3 times with gaps
   function readAloud(text, onDone) {
     stopReading();
     isReading = true;
     document.getElementById('yomiCard').classList.add('reading');
     document.getElementById('readingIndicator').classList.add('visible');
-    setReplayBtnState(true);
+    const btnStop = document.getElementById('btnStop');
+    if (btnStop) btnStop.disabled = false;
 
     const synth = window.speechSynthesis;
     let count = 0;
@@ -987,7 +976,8 @@
     isReading = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
-    setReplayBtnState(false);
+    const btnStop = document.getElementById('btnStop');
+    if (btnStop) btnStop.disabled = true;
     setPlayButtons(true);
   }
 
@@ -997,16 +987,13 @@
     isReading = false;
     document.getElementById('yomiCard').classList.remove('reading');
     document.getElementById('readingIndicator').classList.remove('visible');
-    setReplayBtnState(false);
+    const btnStop = document.getElementById('btnStop');
+    if (btnStop) btnStop.disabled = true;
   }
 
-  function togglePlayStop() {
-    if (isReading) {
-      stopReading();
-      setPlayButtons(true);
-    } else {
-      replay();
-    }
+  function handleStop() {
+    stopReading();
+    setPlayButtons(true);
   }
 
   function replay() {
