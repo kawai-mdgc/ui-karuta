@@ -728,6 +728,7 @@
       <button class="btn btn-answer" id="btnAnswer" onclick="showAnswer()" disabled>💡 答え</button>
       <button class="btn btn-next" id="btnNext" onclick="nextCard()" disabled>次の札 →</button>
     </div>
+    <button class="btn btn-primary" id="btnPlayAgain" onclick="playAgain()" style="display:none">もう一度プレイしますし🍣</button>
   </div>
 
   <!-- EDIT PANE -->
@@ -1133,7 +1134,7 @@
     currentIdx++;
     const validCards = cards.filter(c => c.yomi.trim());
     if (currentIdx >= order.length) {
-      document.getElementById('yomiText').textContent = '🎊 全札コンプリート！お疲れさまでした！';
+      document.getElementById('yomiText').textContent = '🎉 全札おわり！お疲れさまですし！！🍣';
       document.getElementById('yomiText').classList.add('placeholder');
       hideAnswer();
       setPlayButtons(false, true);
@@ -1149,13 +1150,21 @@
 
   function setPlayButtons(enabled, finished = false) {
     document.getElementById('btnReplay').disabled = !enabled;
-    // 次の札は読み上げ中でも押せる（ゲーム終了時のみ無効）
     const notStarted = order.length === 0;
     document.getElementById('btnNext').disabled = finished || notStarted;
     document.getElementById('btnAnswer').disabled = finished || notStarted;
     if (finished) {
       document.getElementById('btnReplay').disabled = true;
+      setStopBtnState('disabled');
+      document.getElementById('btnPlayAgain').style.display = '';
+    } else {
+      document.getElementById('btnPlayAgain').style.display = 'none';
     }
+  }
+
+  function playAgain() {
+    document.getElementById('btnPlayAgain').style.display = 'none';
+    startGame();
   }
 
   // ── UTILS ──────────────────────────────────────────────
